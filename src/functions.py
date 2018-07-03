@@ -14,3 +14,13 @@ def softmax(output):
 
 def tanh(output):
     return np.tanh(output)
+
+
+def relu_deriv(output):
+    result = np.zeros(output.size(0))
+    for i in enumerate(result):
+        if output[i] > 0:
+            result[i] = 1
+    return result
+
+
