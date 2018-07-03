@@ -24,3 +24,7 @@ def relu_deriv(output):
     return result
 
 
+def tanh_deriv(output):
+    return (1 - np.tanh(output)**2)
+
+
