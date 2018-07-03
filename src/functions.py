@@ -27,4 +27,7 @@ def relu_deriv(output):
 def tanh_deriv(output):
     return (1 - np.tanh(output)**2)
 
+def error_function(true_value, predicted_value):
+    return - np.sum(np.multiply(true_value, np.log(predicted_value)))
+
 

@@ -10,7 +10,7 @@ class TheResNet(object):
         pass
 
     def forward(self):
-        pass    
+        pass
 
     def backward(self):
         pass
