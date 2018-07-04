@@ -110,9 +110,9 @@ class TheResNet(object):
 
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
-        self.y = softmax(self.X_out)
+        self.yp = softmax(self.X_out)
 
-        return self.y
+        return self.yp
 
 
 if __name__ == '__main__':
