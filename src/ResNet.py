@@ -110,18 +110,47 @@ class TheResNet(object):
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
         self.yp = softmax(self.X_out)
-        #print(self.yp)
         self._bakward_pass_by_example(self.yp[:, 1], self.yp[:, 1] + 4, 1)
         return self.yp
 
+#bacward
     def _bakward_pass_by_example(self, y_batch, y_result, iteration):
         self.delta_out = (y_result - y_batch).reshape(-1, 1)
         self.delta_hidden_two = np.dot(np.multiply(relu_deriv(self.X2_hidden[:, iteration]), self.W3.transpose()), self.delta_out)
         self.delta_hidden_one = np.dot(np.multiply((tanh_deriv(self.X1_hidden[:, iteration])), self.W2.transpose()), self.delta_hidden_two)
+
         self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act[:, iteration].reshape(1, -1))
         self.delta_Skip = np.dot(self.delta_out, self.X[:, iteration].reshape(1, -1))
         self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act[:, iteration].reshape(1, -1))
         self.delta_W_one = np.dot(self.delta_hidden_one, self.X[:, iteration].reshape(1, -1))
+
+
+    def _weights_update(self, y_batch, y_result):
+        total_delta_out = np.zeros((self.dim_out, 1))
+        total_delta_hidden2 = np.zeros((self.dim_hidden2, 1))
+        total_delta_hidden1 = np.zeros((self.dim_hidden1, 1))
+
+        total_delta_W_out = np.zeros(self.W3.shape)
+        total_delta_W_Skip = np.zeros(self.W_skip)
+        total_delta_W_one = np.zeros(self.W1.shape)
+        total_delta_W_two = np.zeros(self.W2.shape)
+
+        for idx, el in enumerate(y_batch[:]):
+            self._bakward_pass_by_example(el, y_result[:, idx], idx)
+
+            total_delta_out += self.delta_out
+            total_delta_hidden2 += self.delta_hidden_two
+            total_delta_hidden1 += self.delta_hidden_one
+
+            total_delta_W_out += self.delta_W_out
+            total_delta_W_Skip += self.delta_Skip
+            total_delta_W_one += self.delta_W_one
+            total_delta_W_two += self.delta_W_two
+
+        self.W1 = self.W1 - self.learning_rate * total_delta_W_one
+        self.W2 = self.W2 - self.learning_rate * total_delta_W_two
+        self.W3 = self.W3 - self.learning_rate * total_delta_W_out
+        self.W_skip = self.W_skip - self.learning_rate * total_delta_W_Skip
 
 
 if __name__ == '__main__':
