@@ -46,7 +46,7 @@ class TheResNet(object):
         self.W3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, self.dim_hidden2)).astype(np.float32)
         self.b3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, 1)).astype(np.float32)
 
-        self.W_skip = np.eye(self.dim_hidden2, self.dim_hidden1).astype(np.float32)
+        self.W_skip = np.eye(self.dim_hidden2, self.dim_in).astype(np.float32)
 
     # def fit(self, X, n_iter = 1000):
     #  logger = {}
@@ -93,31 +93,30 @@ class TheResNet(object):
     def fit(self, X):
         self.X = X
 
-    def predict(self):
-        if not self.X:
+    def predict(self, X_batch):
+        if self.X is None:
             print('X is None. Run Fit with a valid input data.')
             raise RuntimeError('X is None. Run Fit with a valid input data.')
 
-        return np.argmax(self._forward_pass())
+        return np.argmax(self._forward_pass(X_batch))
 
-    def _forward_pass(self):
-        self.X1_hidden = self.W1.dot(self.X) + self.b1
+    def _forward_pass(self, X_batch):
+        self.X1_hidden = self.W1.dot(X_batch) + self.b1
         self.X1_hidden_act = tanh(self.X1_hidden)
 
         self.X2_hidden = self.W2.dot(self.X1_hidden_act) + self.b2
-        self.X_Skip = self.W_skip.dot(self.X)
+        self.X_Skip = self.W_skip.dot(X_batch)
         self.X2_hidden_act = relu(self.X2_hidden + self.X_Skip)
 
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
-        self.y = softmax(self, self.X_out)
+        self.y = softmax(self.X_out)
 
         return self.y
 
 
-
-
 if __name__ == '__main__':
     net = TheResNet(3, 100, 100, 2)
-    rand_d = np.randn(3, 365).astype(np.float32)
-    net
+    rand_d = np.random.randn(3, 20).astype(np.float32)
+    net.fit(rand_d)
+    net.predict(rand_d)
