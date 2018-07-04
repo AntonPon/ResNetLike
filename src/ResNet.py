@@ -1,6 +1,6 @@
 import numpy as np
 
-from functions import tanh, relu, softmax
+from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv
 
 
 class TheResNet(object):
@@ -15,7 +15,6 @@ class TheResNet(object):
         self.rand_seed = rand_seed
         self._init_weights(init_type='xavier')
         self.X = None
-
 
     def _init_weights(self, init_type = 'xavier'):
         if init_type == 'xavier':
@@ -111,8 +110,18 @@ class TheResNet(object):
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
         self.yp = softmax(self.X_out)
-
+        #print(self.yp)
+        self._bakward_pass_by_example(self.yp[:, 1], self.yp[:, 1] + 4, 1)
         return self.yp
+
+    def _bakward_pass_by_example(self, y_batch, y_result, iteration):
+        self.delta_out = (y_result - y_batch).reshape(-1, 1)
+        self.delta_hidden_two = np.dot(np.multiply(relu_deriv(self.X2_hidden[:, iteration]), self.W3.transpose()), self.delta_out)
+        self.delta_hidden_one = np.dot(np.multiply((tanh_deriv(self.X1_hidden[:, iteration])), self.W2.transpose()), self.delta_hidden_two)
+        self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act[:, iteration].reshape(1, -1))
+        self.delta_Skip = np.dot(self.delta_out, self.X[:, iteration].reshape(1, -1))
+        self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act[:, iteration].reshape(1, -1))
+        self.delta_W_one = np.dot(self.delta_hidden_one, self.X[:, iteration].reshape(1, -1))
 
 
 if __name__ == '__main__':
