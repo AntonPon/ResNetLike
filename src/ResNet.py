@@ -124,7 +124,6 @@ class TheResNet(object):
         self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act[:, iteration].reshape(1, -1))
         self.delta_W_one = np.dot(self.delta_hidden_one, self.X[:, iteration].reshape(1, -1))
 
-
     def _weights_update(self, y_batch, y_result):
         total_delta_out = np.zeros((self.dim_out, 1))
         total_delta_hidden2 = np.zeros((self.dim_hidden2, 1))
@@ -151,6 +150,12 @@ class TheResNet(object):
         self.W2 = self.W2 - self.learning_rate * total_delta_W_two
         self.W3 = self.W3 - self.learning_rate * total_delta_W_out
         self.W_skip = self.W_skip - self.learning_rate * total_delta_W_Skip
+
+        self.b3 = self.b3 - self.learning_rate * self.delta_out
+        self.b2 = self.b2 - self.learning_rate * self.delta_hidden_two
+        self.b1 = self.b1 - self.learning_rate * self.delta_hidden_one
+
+        # add update for bias b
 
 
 if __name__ == '__main__':
