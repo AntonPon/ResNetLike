@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv
+from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
 
 
 class TheResNet(object):
     def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate = 0.05, batch_size = 10,
-                 rand_seed = 42):
+                 rand_seed = 42, max_epochs = 500):
         self.dim_in = dim_in
         self.dim_hidden1 = dim_hidden1
         self.dim_hidden2 = dim_hidden2
@@ -16,6 +16,9 @@ class TheResNet(object):
         self.rand_seed = rand_seed
         self._init_weights(init_type='xavier')
         self.X = None
+        self.y = None
+        self.max_epoch = max_epochs
+        self.epoch = 0
 
     def _init_weights(self, init_type = 'xavier'):
         if init_type == 'xavier':
@@ -48,50 +51,10 @@ class TheResNet(object):
 
         self.W_skip = np.eye(self.dim_hidden2, self.dim_in).astype(np.float32)
 
-    # def fit(self, X, n_iter = 1000):
-    #  logger = {}
-    #  logger['iteration'] = []
-    #  logger['loss_iteration'] = []
-    #
-    #  for t in range(n_iter):
-    #
-    #      # forward pass
-    #      x_hidden1 = X.mm(self.W1) + b1
-    #      x_hidden_act1 = torch.tanh(x_hidden1)
-    #
-    #      x_hidden2 = x_hidden_act1.mm(w2) + b2
-    #      x_hidden_act2 = torch.relu(x_hidden2)
-    #
-    #      y_out = x_hidden_act2.mm(w3) + b3
-    #      y_pred = F.softmax(y_out)  # YOUR CODE HERE
-    #
-    #      # compute loss
-    #      loss = criterion(y_pred, y)
-    #
-    #      # backprop
-    #      loss.backward()
-    #
-    #      # update weights using gradient descent
-    #      w1.data -= learning_rate * w1.grad
-    #      w2.data -= learning_rate * w2.grad
-    #      b1.data -= learning_rate * b1.grad
-    #      b2.data -= learning_rate * b2.grad
-    #
-    #      # manually zero the gradients
-    #      w1.grad.zero_()
-    #      w2.grad.zero_()
-    #      b1.grad.zero_()
-    #      b2.grad.zero_()
-    #
-    #      # reporting & logging
-    #      if t % 100 == 0:
-    #          print(t, loss.item())
-    #
-    #      logger['iteration'] += [t]
-    #      logger['loss_iteration'] += [loss.item()]
 
     def fit(self, X):
         self.X = X
+        self.__split_test_train_set()
 
     def predict(self, X_batch):
         if self.X is None:
@@ -157,7 +120,27 @@ class TheResNet(object):
         self.b2 = self.b2 - self.learning_rate * self.delta_hidden_two
         self.b1 = self.b1 - self.learning_rate * self.delta_hidden_one
 
-        # add update for bias b
+    def train(self, X_train, y_train, X_test, y_test):
+        train_err = []
+        test_err = []
+        self.epoch = 0
+        while self.epoch < self.max_epoch:
+            for batch_num in range(0, len(X_train), self.batch_size):
+                from_ind = batch_num * self.batch_size
+                to_ind = min(from_ind, len(X_train))
+                self._forward_pass(X_train[from_ind: to_ind])
+                err = error_function(y_train[from_ind: to_ind], self.yp)
+                self._weights_update(self.yp, y_train[from_ind: to_ind])
+
+            train_err.append(error_function(y_train, self.predict(X_train)))
+            test_err.append(error_function(y_test), self.predict(X_test))
+
+    def __split_test_train_set(self):
+        self.X_train = self.X[:int(2 * len(self.X) / 3)]
+        self.y_train = self.y[:int(2 * len(self.y) / 3)]
+        self.X_test = self.X[int(2 * len(self.X)):]
+        self.y_test = self.y[int(2 * len(self.y)):]
+
 
 
 def data_prep(path_csv):
@@ -171,12 +154,13 @@ def data_prep(path_csv):
     return (y_real, df[np.arange(2, df.shape[-1], 1)].values)
 
 
-import os
+
 if __name__ == '__main__':
     net = TheResNet(3, 100, 100, 2)
     rand_d = np.random.randn(3, 20).astype(np.float32)
     net.fit(rand_d)
     net.predict(rand_d)
-    #print(os.listdir('../data'))
-    data_prep('../data/wdbc_data.csv')
+    df = data_prep('../data/wdbc.data')
+    net.train()
+
 
