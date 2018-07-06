@@ -17,8 +17,11 @@ class TheResNet(object):
         self._init_weights(init_type='xavier')
         self.X = None
         self.y = None
+        self.m = None
         self.max_epoch = max_epochs
         self.epoch = 0
+        self.train_err = []
+        self.test_err = []
 
     def _init_weights(self, init_type = 'xavier'):
         if init_type == 'xavier':
@@ -51,9 +54,10 @@ class TheResNet(object):
 
         self.W_skip = np.eye(self.dim_hidden2, self.dim_in).astype(np.float32)
 
-
-    def fit(self, X):
+    def fit(self, X, y):
         self.X = X
+        self.y = y
+        _, self.m = X.shape
         self.__split_test_train_set()
 
     def predict(self, X_batch):
@@ -74,8 +78,6 @@ class TheResNet(object):
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
         self.yp = softmax(self.X_out)
-
-        self._weights_update(self.yp, self.yp + 4)
         return self.yp
 
 #backward
@@ -99,7 +101,7 @@ class TheResNet(object):
         total_delta_W_one = np.zeros(self.W1.shape)
         total_delta_W_two = np.zeros(self.W2.shape)
 
-        for idx in range(self.batch_size):
+        for idx in range(y_batch.shape[1]):
             self._bakward_pass_by_example(y_batch[:, idx], y_result[:, idx], idx)
 
             total_delta_out += self.delta_out
@@ -120,27 +122,25 @@ class TheResNet(object):
         self.b2 = self.b2 - self.learning_rate * self.delta_hidden_two
         self.b1 = self.b1 - self.learning_rate * self.delta_hidden_one
 
-    def train(self, X_train, y_train, X_test, y_test):
-        train_err = []
-        test_err = []
+    def train(self):
         self.epoch = 0
+        self.train_err = []
+        self.test_err = []
         while self.epoch < self.max_epoch:
-            for batch_num in range(0, len(X_train), self.batch_size):
-                from_ind = batch_num * self.batch_size
-                to_ind = min(from_ind, len(X_train))
-                self._forward_pass(X_train[from_ind: to_ind])
-                err = error_function(y_train[from_ind: to_ind], self.yp)
-                self._weights_update(self.yp, y_train[from_ind: to_ind])
+            for batch_start in range(0, self.X_train.shape[1], self.batch_size):
+                to_ind = min(batch_start + self.batch_size, self.X_train.shape[1])
+                self._forward_pass(self.X_train[:, batch_start: to_ind])
+                err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
+                self._weights_update(self.yp, self.y_train[:, batch_start: to_ind])
 
-            train_err.append(error_function(y_train, self.predict(X_train)))
-            test_err.append(error_function(y_test), self.predict(X_test))
+            self.train_err.append(error_function(self.y_train, self.predict(self.X_train)))
+            self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
 
     def __split_test_train_set(self):
-        self.X_train = self.X[:int(2 * len(self.X) / 3)]
-        self.y_train = self.y[:int(2 * len(self.y) / 3)]
-        self.X_test = self.X[int(2 * len(self.X)):]
-        self.y_test = self.y[int(2 * len(self.y)):]
-
+        self.X_train = self.X[:, :int(2 * self.m / 3)]
+        self.y_train = self.y[:int(2 * self.m / 3)]
+        self.X_test = self.X[:, int(2 * self.m / 3):]
+        self.y_test = self.y[int(2 * self.m / 3):]
 
 
 def data_prep(path_csv):
@@ -154,13 +154,11 @@ def data_prep(path_csv):
     return (y_real, df[np.arange(2, df.shape[-1], 1)].values)
 
 
-
 if __name__ == '__main__':
-    net = TheResNet(3, 100, 100, 2)
-    rand_d = np.random.randn(3, 20).astype(np.float32)
-    net.fit(rand_d)
-    net.predict(rand_d)
-    df = data_prep('../data/wdbc.data')
+    y, X = data_prep('../data/wdbc.data')
+    m, n = X.shape
+    net = TheResNet(n, 20, 20, 2)
+    net.fit(X.T, y)
     net.train()
 
 
