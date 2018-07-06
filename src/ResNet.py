@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
+from sklearn.preprocessing import normalize
 
 
 class TheResNet(object):
@@ -65,7 +66,7 @@ class TheResNet(object):
             print('X is None. Run Fit with a valid input data.')
             raise RuntimeError('X is None. Run Fit with a valid input data.')
 
-        return np.argmax(self._forward_pass(X_batch))
+        return self._forward_pass(X_batch)
 
     def _forward_pass(self, X_batch):
         self.X1_hidden = self.W1.dot(X_batch) + self.b1
@@ -138,9 +139,9 @@ class TheResNet(object):
 
     def __split_test_train_set(self):
         self.X_train = self.X[:, :int(2 * self.m / 3)]
-        self.y_train = self.y[:int(2 * self.m / 3)]
+        self.y_train = self.y[:, :int(2 * self.m / 3)]
         self.X_test = self.X[:, int(2 * self.m / 3):]
-        self.y_test = self.y[int(2 * self.m / 3):]
+        self.y_test = self.y[:, int(2 * self.m / 3):]
 
 
 def data_prep(path_csv):
@@ -158,6 +159,7 @@ if __name__ == '__main__':
     y, X = data_prep('../data/wdbc.data')
     m, n = X.shape
     net = TheResNet(n, 20, 20, 2)
+    X = normalize(X, axis=0)
     net.fit(X.T, y)
     net.train()
 
