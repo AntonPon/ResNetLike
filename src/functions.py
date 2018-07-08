@@ -6,9 +6,8 @@ def relu(output):
 
 
 def softmax(output):
-    total_exp = np.sum(np.exp(output))
-    results = np.zeros(output.shape)
-    results[:] = np.exp(output)/total_exp
+    total_exp = np.sum(np.exp(output), axis=0)
+    results = np.exp(output)/total_exp
     return results
 
 
@@ -17,7 +16,7 @@ def tanh(output):
 
 
 def relu_deriv(output):
-    result = np.zeros((output.shape[0], 1))
+    result = np.zeros(output.shape[0])
     for idx, el in enumerate(output):
         if el > 0:
             result[idx] = 1

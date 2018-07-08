@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 
-from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
+from ResNetLike.src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
 from sklearn.preprocessing import normalize
 
 
 class TheResNet(object):
-    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate = 0.05, batch_size = 10,
+    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=0.05, batch_size = 10,
                  rand_seed = 42, max_epochs = 500):
         self.dim_in = dim_in
         self.dim_hidden1 = dim_hidden1
@@ -81,12 +81,10 @@ class TheResNet(object):
         self.yp = softmax(self.X_out)
         return self.yp
 
-#backward
     def _bakward_pass_by_example(self, y_batch, y_result, iteration):
         self.delta_out = (y_result - y_batch).reshape(-1, 1)
-        self.delta_hidden_two = np.dot(np.multiply(relu_deriv(self.X2_hidden[:, iteration]), self.W3.transpose()), self.delta_out)
-        self.delta_hidden_one = np.dot(np.multiply((tanh_deriv(self.X1_hidden[:, iteration])), self.W2.transpose()), self.delta_hidden_two)
-
+        self.delta_hidden_two = np.dot(np.dot(np.diag(relu_deriv(self.X2_hidden[:, iteration])), self.W3.transpose()), self.delta_out)
+        self.delta_hidden_one = np.dot(np.dot(np.diag(tanh_deriv(self.X1_hidden[:, iteration])), self.W2.transpose()), self.delta_hidden_two)
         self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act[:, iteration].reshape(1, -1))
         self.delta_Skip = np.dot(self.delta_hidden_two, self.X[:, iteration].reshape(1, -1))
         self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act[:, iteration].reshape(1, -1))
@@ -105,7 +103,7 @@ class TheResNet(object):
         for idx in range(y_batch.shape[1]):
             self._bakward_pass_by_example(y_batch[:, idx], y_result[:, idx], idx)
 
-            total_delta_out += self.delta_out
+            total_delta_out = np.add(self.delta_out, total_delta_out )
             total_delta_hidden2 += self.delta_hidden_two
             total_delta_hidden1 += self.delta_hidden_one
 
@@ -132,6 +130,7 @@ class TheResNet(object):
                 to_ind = min(batch_start + self.batch_size, self.X_train.shape[1])
                 self._forward_pass(self.X_train[:, batch_start: to_ind])
                 err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
+                print(err)
                 self._weights_update(self.yp, self.y_train[:, batch_start: to_ind])
 
             self.train_err.append(error_function(self.y_train, self.predict(self.X_train)))
@@ -158,7 +157,7 @@ def data_prep(path_csv):
 if __name__ == '__main__':
     y, X = data_prep('../data/wdbc.data')
     m, n = X.shape
-    net = TheResNet(n, 20, 20, 2)
+    net = TheResNet(n, 10, 20, 2)
     X = normalize(X, axis=0)
     net.fit(X.T, y)
     net.train()
