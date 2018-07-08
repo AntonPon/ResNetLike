@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 from ResNetLike.src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
 from sklearn.preprocessing import normalize
@@ -116,13 +117,11 @@ class TheResNet(object):
         self.train_err = []
         self.test_err = []
         while self.epoch < self.max_epoch:
-            #print('the epoch is {}'.format(self.epoch))
             for batch_start in range(0, self.X_train.shape[1], self.batch_size):
                 to_ind = min(batch_start + self.batch_size, self.X_train.shape[1])
                 batch = self.X_train[:, batch_start: to_ind]
-                #print(batch.shape)
                 self._forward_pass(batch)
-                #err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
+
                 self._weights_update(self.yp, self.y_train[:, batch_start:to_ind], batch)
 
             predicts = np.zeros(self.predict(self.X_train).shape, dtype=np.int8)
@@ -132,8 +131,7 @@ class TheResNet(object):
                 else:
                     predicts[1, i] = 1
             self.train_err.append(error_function(self.y_train, predicts))
-            print(self.train_err[-1])
-            #self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
+            self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
             self.epoch += 1
 
 
@@ -162,5 +160,12 @@ if __name__ == '__main__':
     X = normalize(X, axis=0)
     net.fit(X.T, y)
     net.train()
+
+    plt.figure(figsize=(12, 8))
+    plt.xlabel('epoch')
+    plt.plot( range(1, len(net.test_err) + 1, 1), net.test_err)
+    plt.ylabel('accuracy')
+    plt.title("Test accuracy")
+    plt.show()
 
 
