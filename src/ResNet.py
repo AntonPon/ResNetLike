@@ -6,8 +6,8 @@ from sklearn.preprocessing import normalize
 
 
 class TheResNet(object):
-    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=0.05, batch_size = 10,
-                 rand_seed = 42, max_epochs = 500):
+    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=5*10**(-3), batch_size=10,
+                 rand_seed=42, max_epochs=200):
         self.dim_in = dim_in
         self.dim_hidden1 = dim_hidden1
         self.dim_hidden2 = dim_hidden2
@@ -81,60 +81,56 @@ class TheResNet(object):
         self.yp = softmax(self.X_out)
         return self.yp
 
-    def _bakward_pass_by_example(self, y_batch, y_result, iteration):
-        self.delta_out = (y_result - y_batch).reshape(-1, 1)
-        self.delta_hidden_two = np.dot(np.dot(np.diag(relu_deriv(self.X2_hidden[:, iteration])), self.W3.transpose()), self.delta_out)
-        self.delta_hidden_one = np.dot(np.dot(np.diag(tanh_deriv(self.X1_hidden[:, iteration])), self.W2.transpose()), self.delta_hidden_two)
-        self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act[:, iteration].reshape(1, -1))
-        self.delta_Skip = np.dot(self.delta_hidden_two, self.X[:, iteration].reshape(1, -1))
-        self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act[:, iteration].reshape(1, -1))
-        self.delta_W_one = np.dot(self.delta_hidden_one, self.X[:, iteration].reshape(1, -1))
+    def _bakward_pass_by_example(self, y_batch, y_result, batch):
+        self.delta_out = (y_result - y_batch)
+        self.delta_hidden_two = relu_deriv(self.X2_hidden) * np.dot(self.W3.transpose(), self.delta_out)
+        self.delta_hidden_one = tanh_deriv(self.X1_hidden) * np.dot(self.W2.transpose(), self.delta_hidden_two)
 
-    def _weights_update(self, y_batch, y_result):
-        total_delta_out = np.zeros((self.dim_out, 1))
-        total_delta_hidden2 = np.zeros((self.dim_hidden2, 1))
-        total_delta_hidden1 = np.zeros((self.dim_hidden1, 1))
+        self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act.transpose())
+        self.delta_Skip = np.dot(self.delta_hidden_two, batch.transpose())
+        self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act.transpose())
+        self.delta_W_one = np.dot(self.delta_hidden_one, batch.transpose())
 
-        total_delta_W_out = np.zeros(self.W3.shape)
-        total_delta_W_Skip = np.zeros(self.W_skip.shape)
-        total_delta_W_one = np.zeros(self.W1.shape)
-        total_delta_W_two = np.zeros(self.W2.shape)
+    def _weights_update(self, y_batch, y_result, batch):
+        self._bakward_pass_by_example(y_batch, y_result, batch)
 
-        for idx in range(y_batch.shape[1]):
-            self._bakward_pass_by_example(y_batch[:, idx], y_result[:, idx], idx)
+        self.W1 -= self.learning_rate * self.delta_W_one
+        self.W2 -= self.learning_rate * self.delta_W_two
+        self.W3 -= self.learning_rate * self.delta_W_out
+        self.W_skip -= self.learning_rate * self.delta_Skip
 
-            total_delta_out = np.add(self.delta_out, total_delta_out )
-            total_delta_hidden2 += self.delta_hidden_two
-            total_delta_hidden1 += self.delta_hidden_one
-
-            total_delta_W_out += self.delta_W_out
-            total_delta_W_Skip += self.delta_Skip
-            total_delta_W_one += self.delta_W_one
-            total_delta_W_two += self.delta_W_two
-
-        self.W1 = self.W1 - self.learning_rate * total_delta_W_one
-        self.W2 = self.W2 - self.learning_rate * total_delta_W_two
-        self.W3 = self.W3 - self.learning_rate * total_delta_W_out
-        self.W_skip = self.W_skip - self.learning_rate * total_delta_W_Skip
-
-        self.b3 = self.b3 - self.learning_rate * self.delta_out
-        self.b2 = self.b2 - self.learning_rate * self.delta_hidden_two
-        self.b1 = self.b1 - self.learning_rate * self.delta_hidden_one
+        self.b3 -= self.learning_rate * np.sum(self.delta_out, axis=1, keepdims=True)
+        self.b2 -= self.learning_rate * np.sum(self.delta_hidden_two, axis=1, keepdims=True)
+        self.b1 -= self.learning_rate * np.sum(self.delta_hidden_one, axis=1, keepdims=True)
+        #print(self.W3, 'W3')
 
     def train(self):
         self.epoch = 0
         self.train_err = []
         self.test_err = []
         while self.epoch < self.max_epoch:
+            #print('the epoch is {}'.format(self.epoch))
             for batch_start in range(0, self.X_train.shape[1], self.batch_size):
                 to_ind = min(batch_start + self.batch_size, self.X_train.shape[1])
-                self._forward_pass(self.X_train[:, batch_start: to_ind])
-                err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
-                print(err)
-                self._weights_update(self.yp, self.y_train[:, batch_start: to_ind])
+                batch = self.X_train[:, batch_start: to_ind]
+                #print(batch.shape)
+                self._forward_pass(batch)
+                #err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
 
-            self.train_err.append(error_function(self.y_train, self.predict(self.X_train)))
-            self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
+                #print(err)
+                self._weights_update(self.yp, self.y_train[:, batch_start:to_ind], batch)
+
+            predicts = np.zeros(self.predict(self.X_train).shape, dtype=np.int8)
+            for i, el in enumerate(self.predict(self.X_train).transpose()):
+                if el[0] > el[1]:
+                    predicts[0, i] = 1
+                else:
+                    predicts[1, i] = 1
+            self.train_err.append(error_function(self.y_train, predicts))
+            print(self.train_err[-1])
+            #self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
+            self.epoch+=1
+
 
     def __split_test_train_set(self):
         self.X_train = self.X[:, :int(2 * self.m / 3)]
