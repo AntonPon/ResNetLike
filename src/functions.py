@@ -28,6 +28,6 @@ def error_function(true_value, predicted_value):
     #print(np.multiply(true_value, np.log(predicted_value)))
     #print((np.sum(np.multiply(true_value, np.log(predicted_value)), axis=0)))
 
-    return - np.sum(np.multiply(true_value, np.log(predicted_value)))/predicted_value.shape[-1]
+    return np.sum(np.multiply(true_value,(predicted_value)))/predicted_value.shape[-1]
 
 

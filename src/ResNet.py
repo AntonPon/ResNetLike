@@ -6,7 +6,7 @@ from sklearn.preprocessing import normalize
 
 
 class TheResNet(object):
-    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=5*10**(-3), batch_size=10,
+    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=7*10**(-3), batch_size=10,
                  rand_seed=42, max_epochs=200):
         self.dim_in = dim_in
         self.dim_hidden1 = dim_hidden1
@@ -31,29 +31,29 @@ class TheResNet(object):
             self.__rand_initialization()
 
     def __rand_initialization(self):
-        self.W1 = np.random.randn(self.dim_hidden1, self.dim_in).astype(np.float32)
-        self.W2 = np.random.randn(self.dim_hidden2, self.dim_hidden1).astype(np.float32)
-        self.W3 = np.random.randn(self.dim_out, self.dim_hidden2).astype(np.float32)
-        self.W_skip = np.eye(self.dim_hidden2, self.dim_hidden1).astype(np.float32)
+        self.W1 = np.random.randn(self.dim_hidden1, self.dim_in).astype(np.float16)
+        self.W2 = np.random.randn(self.dim_hidden2, self.dim_hidden1).astype(np.float16)
+        self.W3 = np.random.randn(self.dim_out, self.dim_hidden2).astype(np.float16)
+        self.W_skip = np.eye(self.dim_hidden2, self.dim_hidden1).astype(np.float16)
 
-        self.b1 = np.random.randn(self.dim_hidden1).astype(np.float32)
-        self.b2 = np.random.randn(self.dim_hidden2).astype(np.float32)
-        self.b3 = np.random.randn(self.dim_out).astype(np.float32)
+        self.b1 = np.random.randn(self.dim_hidden1).astype(np.float16)
+        self.b2 = np.random.randn(self.dim_hidden2).astype(np.float16)
+        self.b3 = np.random.randn(self.dim_out).astype(np.float16)
 
     def __xavier_initialization(self):
         std_in = 2.0 / (self.dim_in + self.dim_hidden1)
-        self.W1 = np.random.uniform(-std_in, std_in, (self.dim_hidden1, self.dim_in)).astype(np.float32)
-        self.b1 = np.random.uniform(-std_in, std_in, (self.dim_hidden1, 1)).astype(np.float32)
+        self.W1 = np.random.uniform(-std_in, std_in, (self.dim_hidden1, self.dim_in)).astype(np.float16)
+        self.b1 = np.random.uniform(-std_in, std_in, (self.dim_hidden1, 1)).astype(np.float16)
 
         std_hidden1 = 2.0 / (self.dim_hidden1 + self.dim_hidden2)
-        self.W2 = np.random.uniform(-std_hidden1, std_hidden1, (self.dim_hidden2, self.dim_hidden1)).astype(np.float32)
-        self.b2 = np.random.uniform(-std_hidden1, std_hidden1, (self.dim_hidden2, 1)).astype(np.float32)
+        self.W2 = np.random.uniform(-std_hidden1, std_hidden1, (self.dim_hidden2, self.dim_hidden1)).astype(np.float16)
+        self.b2 = np.random.uniform(-std_hidden1, std_hidden1, (self.dim_hidden2, 1)).astype(np.float16)
 
         std_hidden2 = 2.0 / (self.dim_hidden2 + self.dim_out)
-        self.W3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, self.dim_hidden2)).astype(np.float32)
-        self.b3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, 1)).astype(np.float32)
+        self.W3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, self.dim_hidden2)).astype(np.float16)
+        self.b3 = np.random.uniform(-std_hidden2, std_hidden2, (self.dim_out, 1)).astype(np.float16)
 
-        self.W_skip = np.eye(self.dim_hidden2, self.dim_in).astype(np.float32)
+        self.W_skip = np.eye(self.dim_hidden2, self.dim_in).astype(np.float16)
 
     def fit(self, X, y):
         self.X = X
@@ -82,18 +82,17 @@ class TheResNet(object):
         return self.yp
 
     def _bakward_pass_by_example(self, y_batch, y_result, batch):
-        self.delta_out = (y_result - y_batch)
-        self.delta_hidden_two = relu_deriv(self.X2_hidden) * np.dot(self.W3.transpose(), self.delta_out)
-        self.delta_hidden_one = tanh_deriv(self.X1_hidden) * np.dot(self.W2.transpose(), self.delta_hidden_two)
+        self.delta_out = (y_batch - y_result)
+        self.delta_hidden_two = relu_deriv(self.X2_hidden) * np.dot(self.W3.T, self.delta_out)
+        self.delta_hidden_one = tanh_deriv(self.X1_hidden) * np.dot(self.W2.T, self.delta_hidden_two)
 
-        self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act.transpose())
-        self.delta_Skip = np.dot(self.delta_hidden_two, batch.transpose())
-        self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act.transpose())
-        self.delta_W_one = np.dot(self.delta_hidden_one, batch.transpose())
+        self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act.T)
+        self.delta_Skip = np.dot(self.delta_hidden_two, batch.T)
+        self.delta_W_two = np.dot(self.delta_hidden_two, self.X1_hidden_act.T)
+        self.delta_W_one = np.dot(self.delta_hidden_one, batch.T)
 
     def _weights_update(self, y_batch, y_result, batch):
         self._bakward_pass_by_example(y_batch, y_result, batch)
-
         self.W1 -= self.learning_rate * self.delta_W_one
         self.W2 -= self.learning_rate * self.delta_W_two
         self.W3 -= self.learning_rate * self.delta_W_out
@@ -102,7 +101,15 @@ class TheResNet(object):
         self.b3 -= self.learning_rate * np.sum(self.delta_out, axis=1, keepdims=True)
         self.b2 -= self.learning_rate * np.sum(self.delta_hidden_two, axis=1, keepdims=True)
         self.b1 -= self.learning_rate * np.sum(self.delta_hidden_one, axis=1, keepdims=True)
-        #print(self.W3, 'W3')
+
+        self.delta_out = np.zeros(self.delta_out.shape)
+        self.delta_hidden_two = np.zeros(self.delta_hidden_two.shape)
+        self.delta_hidden_one = np.zeros(self.delta_hidden_one.shape)
+
+        self.delta_W_out = np.zeros(self.delta_W_out.shape)
+        self.delta_Skip = np.zeros(self.delta_Skip.shape)
+        self.delta_W_two = np.zeros(self.delta_W_two.shape)
+        self.delta_W_one = np.zeros(self.delta_W_one.shape)
 
     def train(self):
         self.epoch = 0
@@ -116,8 +123,6 @@ class TheResNet(object):
                 #print(batch.shape)
                 self._forward_pass(batch)
                 #err = error_function(self.y_train[:, batch_start: to_ind], self.yp)
-
-                #print(err)
                 self._weights_update(self.yp, self.y_train[:, batch_start:to_ind], batch)
 
             predicts = np.zeros(self.predict(self.X_train).shape, dtype=np.int8)
@@ -129,7 +134,7 @@ class TheResNet(object):
             self.train_err.append(error_function(self.y_train, predicts))
             print(self.train_err[-1])
             #self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
-            self.epoch+=1
+            self.epoch += 1
 
 
     def __split_test_train_set(self):
