@@ -1,17 +1,17 @@
-from ResNet import TheResNet
-from functions import tanh, relu
-from utls.data_prep import data_prep
+from ResNetLike.src.ResNet import TheResNet
+from ResNetLike.src.functions import tanh, relu
+from ResNetLike.src.utls.data_prep import data_prep
 from sklearn.preprocessing import normalize
 from matplotlib import pyplot as plt
 
-from utls.grid_search import AwesomeGridSearch
+from ResNetLike.src.utls.grid_search import AwesomeGridSearch
 
 
-def plot_results(precision, title):
+def plot_results(precision, title, y_label):
     plt.figure(figsize=(12, 8))
     plt.xlabel('epoch')
-    plt.plot( range(1, len(precision) + 1, 1), precision)
-    plt.ylabel('accuracy')
+    plt.plot(range(1, len(precision) + 1, 1), precision)
+    plt.ylabel(y_label)
     plt.title(title)
     plt.show()
 
@@ -26,14 +26,16 @@ if __name__ == '__main__':
     net1 = TheResNet()
     net1.fit(X.T, y)
     net1.train()
-    plot_results(net1.test_err, 'Default Network Results')
+    plot_results(net1.test_err, 'Default Network Results', 'accuracy')
+    plot_results(net1.test_loss, 'Default Network Loss results', 'loss')
 
     # replacing softmax with tanh
 
     net_tanh_out = TheResNet(act_funcs=[tanh, relu, tanh])
     net_tanh_out.fit(X.T, y)
     net_tanh_out.train()
-    plot_results(net_tanh_out.test_err, 'Network with tanh on the output layer')
+    plot_results(net_tanh_out.test_err, 'Network with tanh on the output layer', 'accuracy')
+    plot_results(net_tanh_out.test_loss, 'Network with tanh on the output layer loss results', 'loss')
 
     # GridSearch Demo
 

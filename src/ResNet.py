@@ -1,10 +1,10 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
+from ResNetLike.src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function, loss_function
 from sklearn.preprocessing import normalize
 
-from utls.data_prep import data_prep
+from ResNetLike.src.utls.data_prep import data_prep
 
 
 class TheResNet(object):
@@ -26,6 +26,7 @@ class TheResNet(object):
         self.max_epoch = max_epochs
         self.epoch = 0
         self.train_err = []
+        self.test_loss = []
         self.test_err = []
         self.act_funcs = act_funcs
         self.act_func_derivs = act_func_derivs
@@ -137,6 +138,7 @@ class TheResNet(object):
                     predicts[1, i] = 1
             self.train_err.append(error_function(self.y_train, predicts))
             self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
+            self.test_loss.append(loss_function(self.y_test, self.predict(self.X_test)))
             self.epoch += 1
 
     def __split_test_train_set(self):
@@ -169,9 +171,9 @@ if __name__ == '__main__':
 
     plt.figure(figsize=(12, 8))
     plt.xlabel('epoch')
-    plt.plot( range(1, len(tanh_out_net.test_err) + 1, 1), tanh_out_net.test_err)
+    plt.plot(range(1, len(tanh_out_net.test_err) + 1, 1), tanh_out_net.test_loss)
     plt.ylabel('accuracy')
-    plt.title("Tanh out Network Test accuracy")
+    plt.title("Tanh out Network Test loss")
     plt.show()
 
 
