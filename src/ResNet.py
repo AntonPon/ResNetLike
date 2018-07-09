@@ -1,10 +1,10 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from ResNetLike.src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function, loss_function
+from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function, loss_function
 from sklearn.preprocessing import normalize
 
-from ResNetLike.src.utls.data_prep import data_prep
+from src.utls.data_prep import data_prep
 
 
 class TheResNet(object):

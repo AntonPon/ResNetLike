@@ -1,10 +1,10 @@
-from ResNetLike.src.ResNet import TheResNet
-from ResNetLike.src.functions import tanh, relu
-from ResNetLike.src.utls.data_prep import data_prep
+from src.ResNet import TheResNet
+from src.functions import tanh, relu
+from src.utls.data_prep import data_prep
 from sklearn.preprocessing import normalize
 from matplotlib import pyplot as plt
 
-from ResNetLike.src.utls.grid_search import AwesomeGridSearch
+from src.utls.grid_search import AwesomeGridSearch
 
 
 def plot_results(precision, title, y_label):
