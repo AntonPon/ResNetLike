@@ -50,6 +50,7 @@ if __name__ == '__main__':
     print('Best Score: {}'.format(best_score))
     print('Best Params: {}'.format(best_params))
 
+    best_params['max_epochs'] = 500
     best_net = TheResNet(**best_params)
     best_net.fit(X.T, y)
     best_net.train()
