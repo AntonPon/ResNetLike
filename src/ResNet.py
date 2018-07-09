@@ -1,14 +1,17 @@
 import numpy as np
-import pandas as pd
 from matplotlib import pyplot as plt
 
-from ResNetLike.src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
+from src.functions import tanh, relu, softmax, relu_deriv, tanh_deriv, error_function
 from sklearn.preprocessing import normalize
+
+from utls.data_prep import data_prep
 
 
 class TheResNet(object):
     def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=7*10**(-3), batch_size=10,
-                 rand_seed=42, max_epochs=200):
+                 rand_seed=42, max_epochs=200,
+                 act_funcs = (tanh, relu, softmax),
+                 act_func_derivs  = (tanh_deriv, relu_deriv)):
         self.dim_in = dim_in
         self.dim_hidden1 = dim_hidden1
         self.dim_hidden2 = dim_hidden2
@@ -24,6 +27,8 @@ class TheResNet(object):
         self.epoch = 0
         self.train_err = []
         self.test_err = []
+        self.act_funcs = act_funcs
+        self.act_func_derivs = act_func_derivs
 
     def _init_weights(self, init_type = 'xavier'):
         if init_type == 'xavier':
@@ -71,21 +76,21 @@ class TheResNet(object):
 
     def _forward_pass(self, X_batch):
         self.X1_hidden = self.W1.dot(X_batch) + self.b1
-        self.X1_hidden_act = tanh(self.X1_hidden)
+        self.X1_hidden_act = self.act_funcs[0](self.X1_hidden)
 
         self.X2_hidden = self.W2.dot(self.X1_hidden_act) + self.b2
         self.X_Skip = self.W_skip.dot(X_batch)
-        self.X2_hidden_act = relu(self.X2_hidden + self.X_Skip)
+        self.X2_hidden_act = self.act_funcs[1](self.X2_hidden + self.X_Skip)
 
         self.X_out = self.W3.dot(self.X2_hidden_act)
 
-        self.yp = softmax(self.X_out)
+        self.yp = self.act_funcs[-1](self.X_out)
         return self.yp
 
     def _bakward_pass_by_example(self, y_batch, y_result, batch):
         self.delta_out = (y_batch - y_result)
-        self.delta_hidden_two = relu_deriv(self.X2_hidden) * np.dot(self.W3.T, self.delta_out)
-        self.delta_hidden_one = tanh_deriv(self.X1_hidden) * np.dot(self.W2.T, self.delta_hidden_two)
+        self.delta_hidden_two = self.act_func_derivs[-1](self.X2_hidden) * np.dot(self.W3.T, self.delta_out)
+        self.delta_hidden_one = self.act_func_derivs[-2](self.X1_hidden) * np.dot(self.W2.T, self.delta_hidden_two)
 
         self.delta_W_out = np.dot(self.delta_out, self.X2_hidden_act.T)
         self.delta_Skip = np.dot(self.delta_hidden_two, batch.T)
@@ -134,7 +139,6 @@ class TheResNet(object):
             self.test_err.append(error_function(self.y_test, self.predict(self.X_test)))
             self.epoch += 1
 
-
     def __split_test_train_set(self):
         self.X_train = self.X[:, :int(2 * self.m / 3)]
         self.y_train = self.y[:, :int(2 * self.m / 3)]
@@ -142,30 +146,32 @@ class TheResNet(object):
         self.y_test = self.y[:, int(2 * self.m / 3):]
 
 
-def data_prep(path_csv):
-    df = pd.read_csv(path_csv, header=None)
-    y_real = np.zeros((2, df.shape[0]))
-    for i in range(df.shape[0]):
-        idx = 0
-        if df[1].values[i] == 'M':
-            idx = 1
-        y_real[idx, i] = 1
-    return (y_real, df[np.arange(2, df.shape[-1], 1)].values)
-
-
 if __name__ == '__main__':
     y, X = data_prep('../data/wdbc.data')
     m, n = X.shape
-    net = TheResNet(n, 10, 20, 2)
     X = normalize(X, axis=0)
-    net.fit(X.T, y)
-    net.train()
+    #
+    default_net = TheResNet(n, 10, 20, 2)
+    default_net.fit(X.T, y)
+    default_net.train()
 
     plt.figure(figsize=(12, 8))
     plt.xlabel('epoch')
-    plt.plot( range(1, len(net.test_err) + 1, 1), net.test_err)
+    plt.plot( range(1, len(default_net.test_err) + 1, 1), default_net.test_err)
     plt.ylabel('accuracy')
-    plt.title("Test accuracy")
+    plt.title("Default Network Test accuracy")
+    plt.show()
+
+    tanh_out_net = TheResNet(n, 10, 20, 2, act_funcs=[tanh, relu, tanh])
+
+    tanh_out_net.fit(X.T, y)
+    tanh_out_net.train()
+
+    plt.figure(figsize=(12, 8))
+    plt.xlabel('epoch')
+    plt.plot( range(1, len(tanh_out_net.test_err) + 1, 1), tanh_out_net.test_err)
+    plt.ylabel('accuracy')
+    plt.title("Tanh out Network Test accuracy")
     plt.show()
 
 
