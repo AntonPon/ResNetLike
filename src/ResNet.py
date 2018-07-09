@@ -8,7 +8,7 @@ from utls.data_prep import data_prep
 
 
 class TheResNet(object):
-    def __init__(self, dim_in, dim_hidden1, dim_hidden2, dim_out, learning_rate=7*10**(-3), batch_size=10,
+    def __init__(self, dim_in=30, dim_hidden1=10, dim_hidden2=20, dim_out=2, learning_rate=7*10**(-3), batch_size=10,
                  rand_seed=42, max_epochs=200,
                  act_funcs = (tanh, relu, softmax),
                  act_func_derivs  = (tanh_deriv, relu_deriv)):
